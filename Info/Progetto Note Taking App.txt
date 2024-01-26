@@ -1,0 +1,13 @@
+Progetto Note Taking App
+
+
+Funzionalità:
+registrazione utente X
+login utente X
+inserire e salvare una nota X
+modificare una nota 
+eliminare una nota X
+creare una cartella 
+assegnare una nota ad una cartella 
+creare una categoria
+assegnare una nota ad una categoria
