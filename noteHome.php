@@ -245,8 +245,8 @@
                             ?>
                         </select>
                     </div>
-                    <input type="hidden" name="modificaNota"
-                        value="<?php echo isset($_POST['modifica']) ? $note['id'] : ''; ?>">
+                    <input type="hidden" name="salva"
+                        value="">
                     <button type="submit" class="btn btn-primary">
                         <?php echo isset($_POST['modifica']) ? 'Modifica' : 'Salva'; ?>
                     </button>
