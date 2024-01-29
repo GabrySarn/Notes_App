@@ -89,7 +89,7 @@
                 'id' => $rowNote['id']
             );
         }
-        $noteMod = array('title' => '', 'text' => '', 'category_id' => ''); 
+        $noteMod = array('title' => '', 'text' => '', 'category_id' => '', 'category' => '');
 
         $stmtNote->close();
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -103,6 +103,8 @@
                     $title = $_POST['title'];
                     $text = $_POST['text'];
                     $category = $_POST['category'];
+
+                    
 
                     $query = "INSERT INTO notes (user_id, title, content) VALUES (?,?,?)";
                     $stmt = $conn->prepare($query);
@@ -130,22 +132,22 @@
             } elseif (isset($_POST['modifica'])) {
                 $note_id = $_POST['modificaNota'];
 
-                $queryGetNote = "SELECT n.title, n.content, c.id FROM notes n
+                $queryGetNote = "SELECT n.title, n.content, c.id, c.name FROM notes n
                     join note_category nc on nc.note_id = n.id
                     join categories c on c.id = nc.category_id
-                    WHERE user_id = ?";
+                    WHERE n.user_id = ? and n.id = ?";
                 $stmtGetNote = $conn->prepare($queryGetNote);
-                $stmtGetNote->bind_param("i", $note_id);
+                $stmtGetNote->bind_param("ii", $idUtente, $note_id);
                 $stmtGetNote->execute();
                 $resultGetNote = $stmtGetNote->get_result();
 
                 if ($resultGetNote && $resultGetNote->num_rows > 0) {
                     $rowNote = $resultGetNote->fetch_assoc();
-                    echo $rowNote['title'];
                     $noteMod = array(
                         'title' => $rowNote['title'],
                         'text' => $rowNote['content'],
-                        'category_id' => $rowNote['id']
+                        'category_id' => $rowNote['id'],
+                        'category_name' => $rowNote['name']
                     );
                 }
                 $stmtGetNote->close();
@@ -167,7 +169,10 @@
                 // Redirect alla stessa pagina dopo l'eliminazione
                 header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
                 exit;
+            }elseif(isset($_POST['salva_mod'])){
+            
             }
+
         }
 
 
@@ -198,10 +203,12 @@
                         <!-- ... -->
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="noteHome.php"><img src="ico/home.png" alt="Icona" width="30" height="30"></a>
+                        <a class="nav-link" href="noteHome.php"><img src="ico/home.png" alt="Icona" width="30"
+                                height="30"></a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="noteHome.php?logout=1"><img src="ico/logout.png" alt="Icona" width="30" height="30"></a>
+                        <a class="nav-link" href="noteHome.php?logout=1"><img src="ico/logout.png" alt="Icona"
+                                width="30" height="30"></a>
                     </li>
                 </ul>
             </div>
@@ -213,32 +220,43 @@
         <!-- Lato sinistro - Scheda nota -->
         <div class="note-form">
             <div class="note-card">
-                <h5><?php echo isset($_POST['modifica']) ? 'Modifica nota' : 'Aggiungi una nuova nota'; ?></h5>
+                <h5>
+                    <?php echo isset($_POST['modifica']) ? 'Modifica nota' : 'Aggiungi una nuova nota'; ?>
+                </h5>
                 <form method="post" action="noteHome.php">
                     <div class="form-group">
                         <label for="noteTitle">Titolo</label>
-                        <input type="text" class="form-control" id="noteTitle" name="title" value="<?php echo isset($_POST['modifica']) ? $noteMod['title'] : ''; ?>" required>
+                        <input type="text" class="form-control" id="noteTitle" name="title"
+                            value="<?php echo isset($_POST['modifica']) ? $noteMod['title'] : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="noteText">Testo</label>
-                        <textarea class="form-control" id="noteText" name="text" rows="4" required><?php echo isset($_POST['modifica']) ? $noteMod['text'] : ''; ?></textarea>
+                        <textarea class="form-control" id="noteText" name="text" rows="4"
+                            required><?php echo isset($_POST['modifica']) ? $noteMod['text'] : ''; ?></textarea>
                     </div>
                     <div class="form-group">
                         <label for="categorySelect">Categoria</label>
                         <select class="form-control" id="categorySelect" name="category" required>
-                            <option value="">Seleziona una categoria</option>
                             <?php
+                            $cid=$noteMod['category_id'];
+                            $cna = $noteMod['category_name'];
+
+                            echo "<option value='$cid' $selected>$cna</option>";
                             foreach ($resultCategorie as $rowCategoria) {
                                 $idCategoria = $rowCategoria['id'];
-                                $nomeCategoria = $rowCategoria['name'];
-                                $selected = ($idCategoria == $selectedCategoryId) ? 'selected' : '';
-                                echo "<option value='$idCategoria' $selected>$nomeCategoria</option>";
+                                if ($idCategoria != $noteMod['category_id']) {
+                                    $nomeCategoria = $rowCategoria['name'];
+                                    $selected = ($idCategoria == $selectedCategoryId) ? 'selected' : '';
+                                    echo "<option value='$idCategoria' $selected>$nomeCategoria</option>";
+                                }
                             }
                             ?>
                         </select>
                     </div>
-                    <input type="hidden" name="<?php echo isset($_POST['modifica']) ? 'modificaId' : 'salva'; ?>">
-                    <button type="submit" class="btn btn-primary"><?php echo isset($_POST['modifica']) ? 'Modifica' : 'Salva'; ?></button>
+                    <input type="hidden" name="salva">
+                    <button type="submit" class="btn btn-primary">
+                        <?php echo isset($_POST['modifica']) ? 'Modifica' : 'Salva'; ?>
+                    </button>
                 </form>
             </div>
         </div>
@@ -279,7 +297,7 @@
                 // Mostrare le note in base alla categoria
                 foreach ($noteList as $note) {
                     if ($selectedCategory == 'all' || $note['category'] == $selectedCategoryName) {
-                ?>
+                        ?>
 
                         <div class="col-md-4 mb-4">
                             <div class="card">
@@ -287,21 +305,27 @@
                                     <?php echo $note['title']; ?>
                                 </div>
                                 <ul class="list-group list-group-flush">
-                                    <li class="list-group-item"><?php echo $note['text']; ?></li>
-                                    <li class="list-group-item"><?php echo $note['category']; ?></li>
+                                    <li class="list-group-item">
+                                        <?php echo $note['text']; ?>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <?php echo $note['category']; ?>
+                                    </li>
                                     <div class="btn-group" role="group" aria-label="Basic outlined example">
                                         <form method="post" action="noteHome.php">
                                             <input type="hidden" name="modificaNota" value="<?php echo $note['id']; ?>">
-                                            <button type="submit" name="modifica" class="btn btn-outline-primary">Modifica</button>
+                                            <button type="submit" name="modifica"
+                                                class="btn btn-outline-primary">Modifica</button>
                                             <input type="hidden" name="eliminaNota" value="<?php echo $note['id']; ?>">
-                                            <button type="submit" class="btn btn-outline-primary" name="elimina">Elimina</button>
+                                            <button type="submit" class="btn btn-outline-primary"
+                                                name="elimina">Elimina</button>
                                         </form>
                                     </div>
                                 </ul>
                             </div>
                         </div>
 
-                <?php
+                        <?php
                     }
                 }
                 $conn->close();
