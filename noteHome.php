@@ -34,7 +34,22 @@
         }
 
         .category-filter {
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-container label {
+            margin-right: 10px;
+            /* o un valore adeguato per spaziare la label dal select */
+        }
+
+        .filter-controls {
+            display: flex;
+            align-items: center;
         }
     </style>
 </head>
@@ -94,85 +109,31 @@
         $stmtNote->close();
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (isset($_POST['salva'])) {
-                if (
-                    isset($_POST['title']) && !empty($_POST['title'])
-                    && isset($_POST['text']) && !empty($_POST['text'])
-                    && isset($_POST['category']) && !empty($_POST['category'])
-                ) {
-
-                    $title = $_POST['title'];
-                    $text = $_POST['text'];
-                    $category = $_POST['category'];
-
-                    
-
-                    $query = "INSERT INTO notes (user_id, title, content) VALUES (?,?,?)";
-                    $stmt = $conn->prepare($query);
-                    $stmt->bind_param("iss", $idUtente, $title, $text);
-                    $resPrenotazione = $stmt->execute();
-
-                    if ($resPrenotazione) {
-                        $lastInsertedId = $stmt->insert_id;
-                    }
-
-                    $stmt->close();
-
-                    $query = "INSERT INTO note_category (note_id, category_id) VALUES (?,?)";
-                    $stmt = $conn->prepare($query);
-
-                    if ($stmt) {
-                        $stmt->bind_param("ii", $lastInsertedId, $category);
-                        $resPrenotazione = $stmt->execute();
-                    }
-                    $stmt->close();
-
-                    header("Location: {$_SERVER['PHP_SELF']}?added=true");
-                    exit;
-                }
+                $title = $_POST['title'];
+                $text = $_POST['text'];
+                $category = $_POST['category'];
+                saveNote($conn, $idUtente, $title, $text, $category);
+                header("Location: {$_SERVER['PHP_SELF']}?added=true");
+                exit;
             } elseif (isset($_POST['modifica'])) {
                 $note_id = $_POST['modificaNota'];
+                updateNote($conn, $idUtente, $note_id);
 
-                $queryGetNote = "SELECT n.title, n.content, c.id, c.name FROM notes n
-                    join note_category nc on nc.note_id = n.id
-                    join categories c on c.id = nc.category_id
-                    WHERE n.user_id = ? and n.id = ?";
-                $stmtGetNote = $conn->prepare($queryGetNote);
-                $stmtGetNote->bind_param("ii", $idUtente, $note_id);
-                $stmtGetNote->execute();
-                $resultGetNote = $stmtGetNote->get_result();
-
-                if ($resultGetNote && $resultGetNote->num_rows > 0) {
-                    $rowNote = $resultGetNote->fetch_assoc();
-                    $noteMod = array(
-                        'title' => $rowNote['title'],
-                        'text' => $rowNote['content'],
-                        'category_id' => $rowNote['id'],
-                        'category_name' => $rowNote['name']
-                    );
-                }
-                $stmtGetNote->close();
             } elseif (isset($_POST['elimina'])) {
                 $note_id = $_POST['eliminaNota'];
-
-                $queryDeleteNoteCategory = "DELETE FROM note_category WHERE note_id = ?";
-                $stmtDeleteNoteCategory = $conn->prepare($queryDeleteNoteCategory);
-                $stmtDeleteNoteCategory->bind_param("i", $note_id);
-                $stmtDeleteNoteCategory->execute();
-                $stmtDeleteNoteCategory->close();
-
-                $queryDeleteNote = "DELETE FROM notes WHERE id = ?";
-                $stmtDeleteNote = $conn->prepare($queryDeleteNote);
-                $stmtDeleteNote->bind_param("i", $note_id);
-                $stmtDeleteNote->execute();
-                $stmtDeleteNote->close();
-
-                // Redirect alla stessa pagina dopo l'eliminazione
+                deleteNote($conn, $note_id);
                 header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
                 exit;
-            }elseif(isset($_POST['salva_mod'])){
-            
+            } elseif (isset($_POST['salva_mod'])) {
+                $note_id = $_POST['id'];
+                deleteNote($conn, $note_id);
+                $title = $_POST['title'];
+                $text = $_POST['text'];
+                $category = $_POST['category'];
+                saveNote($conn, $idUtente, $title, $text, $category);
+                header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
+                exit;
             }
-
         }
 
 
@@ -187,6 +148,73 @@
         echo '<script>alert("Errore: Utente non definito nella sessione.");</script>';
     }
 
+
+    function saveNote($conn, $idUtente, $title, $text, $category)
+    {
+        $queryInsertNote = "INSERT INTO notes (user_id, title, content) VALUES (?,?,?)";
+        $stmtInsertNote = $conn->prepare($queryInsertNote);
+        $stmtInsertNote->bind_param("iss", $idUtente, $title, $text);
+        $resInsertNote = $stmtInsertNote->execute();
+
+        if ($resInsertNote) {
+            $lastInsertedId = $stmtInsertNote->insert_id;
+
+            $queryInsertNoteCategory = "INSERT INTO note_category (note_id, category_id) VALUES (?,?)";
+            $stmtInsertNoteCategory = $conn->prepare($queryInsertNoteCategory);
+            $stmtInsertNoteCategory->bind_param("ii", $lastInsertedId, $category);
+            $resInsertNoteCategory = $stmtInsertNoteCategory->execute();
+
+            $stmtInsertNoteCategory->close();
+        }
+
+        $stmtInsertNote->close();
+
+        return $resInsertNote && $resInsertNoteCategory;
+    }
+
+    function updateNote($conn, $idUtente, $note_id)
+    {
+        global $noteMod;
+
+        $queryGetNote = "SELECT n.title, n.content, c.id, c.name FROM notes n
+            join note_category nc on nc.note_id = n.id
+            join categories c on c.id = nc.category_id
+            WHERE n.user_id = ? and n.id = ?";
+        $stmtGetNote = $conn->prepare($queryGetNote);
+        $stmtGetNote->bind_param("ii", $idUtente, $note_id);
+        $stmtGetNote->execute();
+        $resultGetNote = $stmtGetNote->get_result();
+
+        if ($resultGetNote && $resultGetNote->num_rows > 0) {
+            $rowNote = $resultGetNote->fetch_assoc();
+            $noteMod = array(
+                'id' => $note_id,
+                'title' => $rowNote['title'],
+                'text' => $rowNote['content'],
+                'category_id' => $rowNote['id'],
+                'category_name' => $rowNote['name']
+            );
+        }
+        $stmtGetNote->close();
+
+    }
+
+    function deleteNote($conn, $noteId)
+    {
+        $queryDeleteNoteCategory = "DELETE FROM note_category WHERE note_id = ?";
+        $stmtDeleteNoteCategory = $conn->prepare($queryDeleteNoteCategory);
+        $stmtDeleteNoteCategory->bind_param("i", $noteId);
+        $resDeleteNoteCategory = $stmtDeleteNoteCategory->execute();
+        $stmtDeleteNoteCategory->close();
+
+        $queryDeleteNote = "DELETE FROM notes WHERE id = ?";
+        $stmtDeleteNote = $conn->prepare($queryDeleteNote);
+        $stmtDeleteNote->bind_param("i", $noteId);
+        $resDeleteNote = $stmtDeleteNote->execute();
+        $stmtDeleteNote->close();
+
+        return $resDeleteNote && $resDeleteNoteCategory;
+    }
 
     ?>
 
@@ -238,7 +266,7 @@
                         <label for="categorySelect">Categoria</label>
                         <select class="form-control" id="categorySelect" name="category" required>
                             <?php
-                            $cid=$noteMod['category_id'];
+                            $cid = $noteMod['category_id'];
                             $cna = $noteMod['category_name'];
 
                             echo "<option value='$cid' $selected>$cna</option>";
@@ -253,7 +281,9 @@
                             ?>
                         </select>
                     </div>
-                    <input type="hidden" name="salva">
+                    <input type="hidden" name="id"
+                        value="<?php echo isset($_POST['modifica']) ? $noteMod['id'] : ''; ?>">
+                    <input type="hidden" name="<?php echo isset($_POST['modifica']) ? 'salva_mod' : 'salva'; ?>">
                     <button type="submit" class="btn btn-primary">
                         <?php echo isset($_POST['modifica']) ? 'Modifica' : 'Salva'; ?>
                     </button>
@@ -267,12 +297,16 @@
         <div class="note-list">
             <div class="category-filter">
                 <form method="GET">
-                    <label for="filterByCategory">Filtra per Categoria:</label>
-                    <select class="form-control" name="filterByCategory" id="filterByCategory">
-                        <option value="all">Tutte le categorie</option>
-                        <?php echo $categorieOptions; ?>
-                    </select>
-                    <button type="submit">Filtra</button>
+                    <div class="filter-container">
+                        <label for="filterByCategory">Filtra per Categoria:</label>
+                        <div class="filter-controls">
+                            <select class="form-control" name="filterByCategory" id="filterByCategory">
+                                <option value="all">Tutte le categorie</option>
+                                <?php echo $categorieOptions; ?>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Filtra</button>
+                        </div>
+                    </div>
                 </form>
             </div>
             <h5>Le tue Note</h5>
