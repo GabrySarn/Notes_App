@@ -98,10 +98,10 @@
 
         while ($rowNote = $resultNote->fetch_assoc()) {
             $noteList[] = array(
+                'id' => $rowNote['id'],
                 'title' => $rowNote['title'],
                 'text' => $rowNote['content'],
-                'category' => $rowNote['name'],
-                'id' => $rowNote['id']
+                'category' => $rowNote['name']
             );
         }
         $noteMod = array('title' => '', 'text' => '', 'category_id' => '', 'category' => '');
@@ -117,20 +117,42 @@
                 exit;
             } elseif (isset($_POST['modifica'])) {
                 $note_id = $_POST['modificaNota'];
-                updateNote($conn, $idUtente, $note_id);
 
+                $queryGetNote = "SELECT n.title, n.content, c.id FROM notes n
+                    join note_category nc on nc.note_id = n.id
+                    join categories c on c.id = nc.category_id
+                    WHERE user_id = ?";
+                $stmtGetNote = $conn->prepare($queryGetNote);
+                $stmtGetNote->bind_param("i", $note_id);
+                $stmtGetNote->execute();
+                $resultGetNote = $stmtGetNote->get_result();
+
+                if ($resultGetNote && $resultGetNote->num_rows > 0) {
+                    $rowNote = $resultGetNote->fetch_assoc();
+                    echo $rowNote['title'];
+                    $noteMod = array(
+                        'title' => $rowNote['title'],
+                        'text' => $rowNote['content'],
+                        'category_id' => $rowNote['id']
+                    );
+                }
+                $stmtGetNote->close();
             } elseif (isset($_POST['elimina'])) {
                 $note_id = $_POST['eliminaNota'];
-                deleteNote($conn, $note_id);
-                header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
-                exit;
-            } elseif (isset($_POST['salva_mod'])) {
-                $note_id = $_POST['id'];
-                deleteNote($conn, $note_id);
-                $title = $_POST['title'];
-                $text = $_POST['text'];
-                $category = $_POST['category'];
-                saveNote($conn, $idUtente, $title, $text, $category);
+
+                $queryDeleteNoteCategory = "DELETE FROM note_category WHERE note_id = ?";
+                $stmtDeleteNoteCategory = $conn->prepare($queryDeleteNoteCategory);
+                $stmtDeleteNoteCategory->bind_param("i", $note_id);
+                $stmtDeleteNoteCategory->execute();
+                $stmtDeleteNoteCategory->close();
+
+                $queryDeleteNote = "DELETE FROM notes WHERE id = ?";
+                $stmtDeleteNote = $conn->prepare($queryDeleteNote);
+                $stmtDeleteNote->bind_param("i", $note_id);
+                $stmtDeleteNote->execute();
+                $stmtDeleteNote->close();
+
+                // Redirect alla stessa pagina dopo l'eliminazione
                 header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
                 exit;
             }
@@ -254,8 +276,7 @@
                 <form method="post" action="noteHome.php">
                     <div class="form-group">
                         <label for="noteTitle">Titolo</label>
-                        <input type="text" class="form-control" id="noteTitle" name="title"
-                            value="<?php echo isset($_POST['modifica']) ? $noteMod['title'] : ''; ?>" required>
+                        <input type="text" class="form-control" id="noteTitle" name="title" value="<?php echo isset($_POST['modifica']) ? $noteMod['title'] : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="noteText">Testo</label>
@@ -272,24 +293,19 @@
                             echo "<option value='$cid' $selected>$cna</option>";
                             foreach ($resultCategorie as $rowCategoria) {
                                 $idCategoria = $rowCategoria['id'];
-                                if ($idCategoria != $noteMod['category_id']) {
-                                    $nomeCategoria = $rowCategoria['name'];
-                                    $selected = ($idCategoria == $selectedCategoryId) ? 'selected' : '';
-                                    echo "<option value='$idCategoria' $selected>$nomeCategoria</option>";
-                                }
+                                $nomeCategoria = $rowCategoria['name'];
+                                $selected = ($idCategoria == $selectedCategoryId) ? 'selected' : '';
+                                echo "<option value='$idCategoria' $selected>$nomeCategoria</option>";
                             }
                             ?>
                         </select>
                     </div>
-                    <input type="hidden" name="id"
-                        value="<?php echo isset($_POST['modifica']) ? $noteMod['id'] : ''; ?>">
-                    <input type="hidden" name="<?php echo isset($_POST['modifica']) ? 'salva_mod' : 'salva'; ?>">
-                    <button type="submit" class="btn btn-primary">
-                        <?php echo isset($_POST['modifica']) ? 'Modifica' : 'Salva'; ?>
-                    </button>
+                    <input type="hidden" name="<?php echo isset($_POST['modifica']) ? 'modificaId' : 'salva'; ?>">
+                    <button type="submit" class="btn btn-primary"><?php echo isset($_POST['modifica']) ? 'Modifica' : 'Salva'; ?></button>
                 </form>
             </div>
         </div>
+
 
 
 
