@@ -118,7 +118,6 @@
             } elseif (isset($_POST['modifica'])) {
                 $note_id = $_POST['modificaNota'];
                 updateNote($conn, $idUtente, $note_id);
-
             } elseif (isset($_POST['elimina'])) {
                 $note_id = $_POST['eliminaNota'];
                 deleteNote($conn, $note_id);
@@ -216,6 +215,19 @@
         return $resDeleteNote && $resDeleteNoteCategory;
     }
 
+    function folders($conn, $idUtente)
+    {
+        $query = "SELECT id, name FROM folders WHERE user_id = $idUtente";
+        $result = mysqli_query($conn, $query);
+        if (mysqli_num_rows($result) > 0) {
+            echo '<div>';
+            while ($row = mysqli_fetch_assoc($result)) {
+                echo "<a class='dropdown-item' href='noteFolder.php?folder_id={$row['id']}'>{$row['name']}</a>";
+            }
+            echo '</div>';
+        }
+    }
+
     ?>
 
     <header>
@@ -225,10 +237,15 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ml-auto">
                     <li class="nav-item dropdown">
-                        <!-- ... -->
-                    </li>
-                    <li class="nav-item dropdown">
-                        <!-- ... -->
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Cartelle
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <?php
+                            folders($conn, $idUtente);
+                            ?>
+                        </div>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="noteHome.php"><img src="ico/home.png" alt="Icona" width="30"
@@ -304,7 +321,7 @@
                                 <option value="all">Tutte le categorie</option>
                                 <?php echo $categorieOptions; ?>
                             </select>
-                            <button type="submit" class="btn btn-primary">Filtra</button>
+                            <button type="submit" class="btn btn-primary" style="margin-left: 10px;">Filtra</button>
                         </div>
                     </div>
                 </form>
