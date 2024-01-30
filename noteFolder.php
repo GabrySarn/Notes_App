@@ -15,9 +15,6 @@
         <a class="navbar-brand" href="#">Notes App</a>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ml-auto">
-                <li class="nav-item dropdown">
-                    <!-- ... il tuo codice per la cartella ... -->
-                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="noteHome.php"><img src="ico/home.png" alt="Icona" width="30"
                             height="30"></a>

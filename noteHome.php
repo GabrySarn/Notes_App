@@ -44,7 +44,6 @@
 
         .filter-container label {
             margin-right: 10px;
-            /* o un valore adeguato per spaziare la label dal select */
         }
 
         .filter-controls {
@@ -67,7 +66,6 @@
         $email = $_SESSION['email'];
         $idUtente = $_SESSION['idUtente'];
 
-        // Ottieni categorie dal database
         $queryCategorie = "SELECT id, name FROM categories";
         $resultCategorie = $conn->query($queryCategorie);
 
@@ -81,7 +79,6 @@
                 $categorieOptions .= "<option value='$idCategoria'>$nomeCategoria</option>";
             }
         } else {
-            // Nessuna categoria nel database
             $categorieOptions = "<option value=''>Nessuna categoria disponibile</option>";
         }
 
@@ -206,6 +203,12 @@
         $resDeleteNoteCategory = $stmtDeleteNoteCategory->execute();
         $stmtDeleteNoteCategory->close();
 
+        $queryDeleteNoteFolder = "DELETE FROM note_folder WHERE note_id = ?";
+        $stmtDeleteNoteFolder = $conn->prepare($queryDeleteNoteFolder);
+        $stmtDeleteNoteFolder->bind_param("i", $noteId);
+        $resDeleteNoteFolder = $stmtDeleteNoteFolder->execute();
+        $stmtDeleteNoteFolder->close();
+
         $queryDeleteNote = "DELETE FROM notes WHERE id = ?";
         $stmtDeleteNote = $conn->prepare($queryDeleteNote);
         $stmtDeleteNote->bind_param("i", $noteId);
@@ -329,7 +332,6 @@
             <h5>Le tue Note</h5>
             <div class="row">
                 <?php
-                // Ottenere la categoria selezionata o impostarla su "all" di default
                 $selectedCategory = isset($_GET['filterByCategory']) ? $_GET['filterByCategory'] : 'all';
 
                 if ($selectedCategory != 'all') {
@@ -345,7 +347,6 @@
                     }
                 }
 
-                // Mostrare le note in base alla categoria
                 foreach ($noteList as $note) {
                     if ($selectedCategory == 'all' || $note['category'] == $selectedCategoryName) {
                         ?>
@@ -370,6 +371,18 @@
                                             <input type="hidden" name="eliminaNota" value="<?php echo $note['id']; ?>">
                                             <button type="submit" class="btn btn-outline-primary"
                                                 name="elimina">Elimina</button>
+                                            <div class="dropdown">
+                                                <button class="btn btn-secondary dropdown-toggle" type="button"
+                                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                                    Cartella
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><button class="dropdown-item" type="button">Action</button></li>
+                                                    <li><button class="dropdown-item" type="button">Another action</button></li>
+                                                    <li><button class="dropdown-item" type="button">Something else here</button>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </form>
                                     </div>
                                 </ul>
