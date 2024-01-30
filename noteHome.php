@@ -82,6 +82,23 @@
             $categorieOptions = "<option value=''>Nessuna categoria disponibile</option>";
         }
 
+        $queryFolders = "SELECT id, name FROM folders WHERE user_id = ?";
+        $stmtFolders = $conn->prepare($queryFolders);
+        $stmtFolders->bind_param("i", $idUtente);
+        $stmtFolders->execute();
+        $resultFolders = $stmtFolders->get_result();
+
+        $foldersOptions = "<option value=''>Nessuna cartella</option>";
+        if ($resultFolders && $resultFolders->num_rows > 0) {
+            while ($rowFolder = $resultFolders->fetch_assoc()) {
+                $idFolder = $rowFolder['id'];
+                $nameFolder = $rowFolder['name'];
+                $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
+            }
+        }
+
+        $stmtFolders->close();
+
         $queryNote = "SELECT n.id, n.title, n.content, c.name FROM notes n
         join note_category nc on nc.note_id = n.id
         join categories c on c.id = nc.category_id
@@ -109,7 +126,7 @@
                 $title = $_POST['title'];
                 $text = $_POST['text'];
                 $category = $_POST['category'];
-                saveNote($conn, $idUtente, $title, $text, $category);
+                saveNote($conn, $idUtente, $title, $text, $category, $folder);
                 header("Location: {$_SERVER['PHP_SELF']}?added=true");
                 exit;
             } elseif (isset($_POST['modifica'])) {
@@ -126,9 +143,14 @@
                 $title = $_POST['title'];
                 $text = $_POST['text'];
                 $category = $_POST['category'];
-                saveNote($conn, $idUtente, $title, $text, $category);
+                saveNote($conn, $idUtente, $title, $text, $category, $folder);
                 header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
                 exit;
+            }elseif (isset($_POST['cartelle'])) {
+                $note_id = $_POST['currentNoteId'];
+                $selectedFolder = $_POST['cartelle'];
+        
+                updateNoteFolder($conn, $note_id, $selectedFolder);
             }
         }
 
@@ -145,7 +167,7 @@
     }
 
 
-    function saveNote($conn, $idUtente, $title, $text, $category)
+    function saveNote($conn, $idUtente, $title, $text, $category, $folder)
     {
         $queryInsertNote = "INSERT INTO notes (user_id, title, content) VALUES (?,?,?)";
         $stmtInsertNote = $conn->prepare($queryInsertNote);
@@ -164,6 +186,28 @@
         }
 
         $stmtInsertNote->close();
+
+        if (!empty($folder)) {
+            $queryInsertNoteFolder = "INSERT INTO note_folder (note_id, folder_id) VALUES (?,?)";
+            $stmtInsertNoteFolder = $conn->prepare($queryInsertNoteFolder);
+            $stmtInsertNoteFolder->bind_param("ii", $lastInsertedId, $folder);
+            $resInsertNoteFolder = $stmtInsertNoteFolder->execute();
+
+            $stmtInsertNoteFolder->close();
+        }
+
+        return $resInsertNote && $resInsertNoteCategory && (empty($folder) || $resInsertNoteFolder);
+
+        if (!empty($folder)) {
+            $queryInsertNoteFolder = "INSERT INTO note_folder (note_id, folder_id) VALUES (?,?)";
+            $stmtInsertNoteFolder = $conn->prepare($queryInsertNoteFolder);
+            $stmtInsertNoteFolder->bind_param("ii", $lastInsertedId, $folder);
+            $resInsertNoteFolder = $stmtInsertNoteFolder->execute();
+
+            $stmtInsertNoteFolder->close();
+        }
+
+        return $resInsertNote && $resInsertNoteCategory && (empty($folder) || $resInsertNoteFolder);
 
         return $resInsertNote && $resInsertNoteCategory;
     }
@@ -230,6 +274,17 @@
             echo '</div>';
         }
     }
+
+    function updateNoteFolder($conn, $note_id, $folder_id)
+{
+    $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
+    $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
+    $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
+    $resUpdateFolder = $stmtUpdateFolder->execute();
+    $stmtUpdateFolder->close();
+
+    return $resUpdateFolder;
+}
 
     ?>
 
@@ -361,7 +416,16 @@
                                         <?php echo $note['text']; ?>
                                     </li>
                                     <li class="list-group-item">
+                                        [
                                         <?php echo $note['category']; ?>
+                                        ]
+                                    </li>
+                                    <li class="list-group-item">
+                                        <label for="cartelle">Seleziona una cartella:</label>
+                                        <select id="cartelle" name="cartelle" class="form-control"
+                                            onchange="this.form.submit()">
+                                            <?php echo $foldersOptions; ?>
+                                        </select>
                                     </li>
                                     <div class="btn-group" role="group" aria-label="Basic outlined example">
                                         <form method="post" action="noteHome.php">
@@ -371,20 +435,9 @@
                                             <input type="hidden" name="eliminaNota" value="<?php echo $note['id']; ?>">
                                             <button type="submit" class="btn btn-outline-primary"
                                                 name="elimina">Elimina</button>
-                                            <div class="dropdown">
-                                                <button class="btn btn-secondary dropdown-toggle" type="button"
-                                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                                    Cartella
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><button class="dropdown-item" type="button">Action</button></li>
-                                                    <li><button class="dropdown-item" type="button">Another action</button></li>
-                                                    <li><button class="dropdown-item" type="button">Something else here</button>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </form>
                                     </div>
+                                    </form>
+
                                 </ul>
                             </div>
                         </div>
