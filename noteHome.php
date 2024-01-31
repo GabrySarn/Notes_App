@@ -146,11 +146,13 @@
                 saveNote($conn, $idUtente, $title, $text, $category, $folder);
                 header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
                 exit;
-            }elseif (isset($_POST['cartelle'])) {
+            } elseif (isset($_POST['cartella'])) {
                 $note_id = $_POST['currentNoteId'];
-                $selectedFolder = $_POST['cartelle'];
-        
+                echo "<script>alert($note_id);</script>";
+                $selectedFolder = $_POST['cartella'];
                 updateNoteFolder($conn, $note_id, $selectedFolder);
+                header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
+                exit;
             }
         }
 
@@ -276,15 +278,15 @@
     }
 
     function updateNoteFolder($conn, $note_id, $folder_id)
-{
-    $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
-    $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
-    $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
-    $resUpdateFolder = $stmtUpdateFolder->execute();
-    $stmtUpdateFolder->close();
+    {
+        $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
+        $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
+        $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
+        $resUpdateFolder = $stmtUpdateFolder->execute();
+        $stmtUpdateFolder->close();
 
-    return $resUpdateFolder;
-}
+        return $resUpdateFolder;
+    }
 
     ?>
 
@@ -366,8 +368,6 @@
             </div>
         </div>
 
-
-
         <!-- Lato destro - Elenco delle note -->
         <div class="note-list">
             <div class="category-filter">
@@ -420,22 +420,25 @@
                                         <?php echo $note['category']; ?>
                                         ]
                                     </li>
-                                    <li class="list-group-item">
-                                        <label for="cartelle">Seleziona una cartella:</label>
-                                        <select id="cartelle" name="cartelle" class="form-control"
-                                            onchange="this.form.submit()">
-                                            <?php echo $foldersOptions; ?>
-                                        </select>
-                                    </li>
-                                    <div class="btn-group" role="group" aria-label="Basic outlined example">
-                                        <form method="post" action="noteHome.php">
+                                    <form method="post" action="noteHome.php">
+                                        <li class="list-group-item">
+                                            <label for="cartella">Seleziona una cartella:</label>
+                                            <input type="hidden" name="currentNoteId" value="<?php echo $note['id']; ?>">
+                                            <select id="cartella" name="cartella" class="form-control"
+                                                onchange="this.form.submit()" style="height: 50px;">
+                                                <?php echo $foldersOptions; ?>
+                                            </select>
+                                            
+                                        </li>
+                                        <div class="btn-group" role="group" aria-label="Basic outlined example">
+
                                             <input type="hidden" name="modificaNota" value="<?php echo $note['id']; ?>">
                                             <button type="submit" name="modifica"
                                                 class="btn btn-outline-primary">Modifica</button>
                                             <input type="hidden" name="eliminaNota" value="<?php echo $note['id']; ?>">
                                             <button type="submit" class="btn btn-outline-primary"
                                                 name="elimina">Elimina</button>
-                                    </div>
+                                        </div>
                                     </form>
 
                                 </ul>
