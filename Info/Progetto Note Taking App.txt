@@ -8,6 +8,6 @@ inserire e salvare una nota X
 modificare una nota X
 eliminare una nota X
 creare una cartella 
-assegnare una nota ad una cartella 
+assegnare una nota ad una cartella x
 creare una categoria 
 assegnare una nota ad una categoria X

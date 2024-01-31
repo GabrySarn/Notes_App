@@ -126,6 +126,7 @@
                 $title = $_POST['title'];
                 $text = $_POST['text'];
                 $category = $_POST['category'];
+                $folder = isset($_POST['cartella']) ? $_POST['cartella'] : '';
                 saveNote($conn, $idUtente, $title, $text, $category, $folder);
                 header("Location: {$_SERVER['PHP_SELF']}?added=true");
                 exit;
@@ -144,15 +145,12 @@
                 $text = $_POST['text'];
                 $category = $_POST['category'];
                 saveNote($conn, $idUtente, $title, $text, $category, $folder);
-                header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
+                header("Location: {$_SERVER['PHP_SELF']}?modded=true");
                 exit;
             } elseif (isset($_POST['cartella'])) {
                 $note_id = $_POST['currentNoteId'];
-                echo "<script>alert($note_id);</script>";
                 $selectedFolder = $_POST['cartella'];
                 updateNoteFolder($conn, $note_id, $selectedFolder);
-                header("Location: {$_SERVER['PHP_SELF']}?deleted=true");
-                exit;
             }
         }
 
@@ -199,19 +197,6 @@
         }
 
         return $resInsertNote && $resInsertNoteCategory && (empty($folder) || $resInsertNoteFolder);
-
-        if (!empty($folder)) {
-            $queryInsertNoteFolder = "INSERT INTO note_folder (note_id, folder_id) VALUES (?,?)";
-            $stmtInsertNoteFolder = $conn->prepare($queryInsertNoteFolder);
-            $stmtInsertNoteFolder->bind_param("ii", $lastInsertedId, $folder);
-            $resInsertNoteFolder = $stmtInsertNoteFolder->execute();
-
-            $stmtInsertNoteFolder->close();
-        }
-
-        return $resInsertNote && $resInsertNoteCategory && (empty($folder) || $resInsertNoteFolder);
-
-        return $resInsertNote && $resInsertNoteCategory;
     }
 
     function updateNote($conn, $idUtente, $note_id)
@@ -279,13 +264,35 @@
 
     function updateNoteFolder($conn, $note_id, $folder_id)
     {
-        $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
-        $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
-        $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
-        $resUpdateFolder = $stmtUpdateFolder->execute();
-        $stmtUpdateFolder->close();
+        $queryCheckFolder = "SELECT * FROM note_folder WHERE note_id = ?";
+        $stmtCheckFolder = $conn->prepare($queryCheckFolder);
+        $stmtCheckFolder->bind_param("i", $note_id);
+        $stmtCheckFolder->execute();
+        $resultCheckFolder = $stmtCheckFolder->get_result();
 
-        return $resUpdateFolder;
+        if ($resultCheckFolder->num_rows > 0) {
+            $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
+            $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
+            $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
+            $resUpdateFolder = $stmtUpdateFolder->execute();
+            $stmtUpdateFolder->close();
+        } else {
+            $queryInsertFolder = "INSERT INTO note_folder (folder_id, note_id) VALUES (?, ?)";
+            $stmtInsertFolder = $conn->prepare($queryInsertFolder);
+            $stmtInsertFolder->bind_param("ii", $folder_id, $note_id);
+            $resInsertFolder = $stmtInsertFolder->execute();
+            $stmtInsertFolder->close();
+        }
+
+        $stmtCheckFolder->close();
+
+        if (isset($resInsertFolder)) {
+            return $resInsertFolder;
+        } elseif (isset($resUpdateFolder)) {
+            return $resUpdateFolder;
+        }
+
+        return false;
     }
 
     ?>
@@ -428,10 +435,8 @@
                                                 onchange="this.form.submit()" style="height: 50px;">
                                                 <?php echo $foldersOptions; ?>
                                             </select>
-                                            
                                         </li>
                                         <div class="btn-group" role="group" aria-label="Basic outlined example">
-
                                             <input type="hidden" name="modificaNota" value="<?php echo $note['id']; ?>">
                                             <button type="submit" name="modifica"
                                                 class="btn btn-outline-primary">Modifica</button>
@@ -440,7 +445,6 @@
                                                 name="elimina">Elimina</button>
                                         </div>
                                     </form>
-
                                 </ul>
                             </div>
                         </div>
@@ -452,7 +456,6 @@
                 ?>
             </div>
         </div>
-
 
 
     </div>
