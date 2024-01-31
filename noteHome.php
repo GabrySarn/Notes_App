@@ -249,18 +249,23 @@
         return $resDeleteNote && $resDeleteNoteCategory;
     }
 
-    function folders($conn, $idUtente)
+    function getFoldersNavbar($conn, $selectedFolder)
     {
-        $query = "SELECT id, name FROM folders WHERE user_id = $idUtente";
-        $result = mysqli_query($conn, $query);
-        if (mysqli_num_rows($result) > 0) {
+        $query = "SELECT id, name FROM folders";
+        $result = $conn->query($query);
+
+        if ($result && $result->num_rows > 0) {
             echo '<div>';
-            while ($row = mysqli_fetch_assoc($result)) {
-                echo "<a class='dropdown-item' href='noteFolder.php?folder_id={$row['id']}'>{$row['name']}</a>";
+            while ($row = $result->fetch_assoc()) {
+                $idFolder = $row['id'];
+                $nameFolder = $row['name'];
+                $selected = ($idFolder == $selectedFolder) ? 'selected' : '';
+                echo "<a class='dropdown-item' href='noteHome.php?folder_id={$row['id']}' data-folder-id='$idFolder' $selected>$nameFolder</a>";
             }
             echo '</div>';
         }
     }
+
 
     function updateNoteFolder($conn, $note_id, $folder_id)
     {
@@ -310,7 +315,7 @@
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <?php
-                            folders($conn, $idUtente);
+                            getFoldersNavbar($conn,$selectedFolder);
                             ?>
                         </div>
                     </li>
@@ -459,6 +464,22 @@
 
 
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Ottieni il parametro folder_id dalla query string dell'URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectedFolderId = urlParams.get('folder_id');
+
+            // Seleziona dinamicamente la cartella nel menu a discesa
+            if (selectedFolderId) {
+                const folderSelect = document.getElementById('cartella');
+                if (folderSelect) {
+                    folderSelect.value = selectedFolderId;
+                }
+            }
+        });
+    </script>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
