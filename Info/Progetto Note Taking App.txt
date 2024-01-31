@@ -7,7 +7,7 @@ login utente X
 inserire e salvare una nota X
 modificare una nota X
 eliminare una nota X
-creare una cartella 
+creare una cartella X
 assegnare una nota ad una cartella x
-creare una categoria 
+creare una categoria X
 assegnare una nota ad una categoria X

@@ -82,24 +82,6 @@
             $categorieOptions = "<option value=''>Nessuna categoria disponibile</option>";
         }
 
-        /* $queryFolders = "SELECT id, name FROM folders WHERE user_id = ?";
-         $stmtFolders = $conn->prepare($queryFolders);
-         $stmtFolders->bind_param("i", $idUtente);
-         $stmtFolders->execute();
-         $resultFolders = $stmtFolders->get_result();
-
-         $foldersOptions = "<option value=''>Nessuna cartella</option>";
-         if ($resultFolders && $resultFolders->num_rows > 0) {
-             while ($rowFolder = $resultFolders->fetch_assoc()) {
-                 $idFolder = $rowFolder['id'];
-                 $nameFolder = $rowFolder['name'];
-                 $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
-             }
-         }
-
-         $stmtFolders->close();*/
-
-
         $queryNote = "SELECT n.id, n.title, n.content, c.name FROM notes n
         join note_category nc on nc.note_id = n.id
         join categories c on c.id = nc.category_id
@@ -151,7 +133,6 @@
             } elseif (isset($_POST['cartella'])) {
                 $note_id = $_POST['currentNoteId'];
                 $selectedFolder = $_POST['cartella'];
-                $_SESSION["idCartella"] = $selectedFolder;
                 updateNoteFolder($conn, $note_id, $selectedFolder);
             }
         }
@@ -255,13 +236,19 @@
     {
         $query = "SELECT id, name FROM folders";
         $result = $conn->query($query);
+        $i = 0;
+        if ($result && $result->num_rows > 1) {
 
-        if ($result && $result->num_rows > 0) {
             echo '<div>';
+
             while ($row = $result->fetch_assoc()) {
-                $idFolder = $row['id'];
-                $nameFolder = $row['name'];
-                echo "<a class='dropdown-item' href='noteFolder.php?folder_id={$row['id']}' data-folder-id='$idFolder'>$nameFolder</a>";
+                if ($i > 0) {
+                    $idFolder = $row['id'];
+                    $nameFolder = $row['name'];
+                    echo "<a class='dropdown-item' href='noteFolder.php?folder_id={$row['id']}' data-folder-id='$idFolder'>$nameFolder</a>";
+                } else {
+                    $i = 1;
+                }
             }
             echo '</div>';
         }
@@ -270,26 +257,37 @@
 
     function updateNoteFolder($conn, $note_id, $folder_id)
     {
+
+
         $queryCheckFolder = "SELECT * FROM note_folder WHERE note_id = ?";
         $stmtCheckFolder = $conn->prepare($queryCheckFolder);
         $stmtCheckFolder->bind_param("i", $note_id);
         $stmtCheckFolder->execute();
         $resultCheckFolder = $stmtCheckFolder->get_result();
+        if ($folder_id > 0) {
+            if ($resultCheckFolder->num_rows > 0) {
+                $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
+                $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
+                $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
+                $resUpdateFolder = $stmtUpdateFolder->execute();
+                $stmtUpdateFolder->close();
 
-        if ($resultCheckFolder->num_rows > 0) {
-            $queryUpdateFolder = "UPDATE note_folder SET folder_id = ? WHERE note_id = ?";
-            $stmtUpdateFolder = $conn->prepare($queryUpdateFolder);
-            $stmtUpdateFolder->bind_param("ii", $folder_id, $note_id);
-            $resUpdateFolder = $stmtUpdateFolder->execute();
-            $stmtUpdateFolder->close();
+            } else {
+                $queryInsertFolder = "INSERT INTO note_folder (folder_id, note_id) VALUES (?, ?)";
+                $stmtInsertFolder = $conn->prepare($queryInsertFolder);
+                $stmtInsertFolder->bind_param("ii", $folder_id, $note_id);
+                $resInsertFolder = $stmtInsertFolder->execute();
+                $stmtInsertFolder->close();
+
+            }
+
         } else {
-            $queryInsertFolder = "INSERT INTO note_folder (folder_id, note_id) VALUES (?, ?)";
-            $stmtInsertFolder = $conn->prepare($queryInsertFolder);
-            $stmtInsertFolder->bind_param("ii", $folder_id, $note_id);
-            $resInsertFolder = $stmtInsertFolder->execute();
-            $stmtInsertFolder->close();
+            $queryDeleteNoteFolder = "DELETE FROM note_folder WHERE note_id = ?";
+            $stmtDeleteNoteFolder = $conn->prepare($queryDeleteNoteFolder);
+            $stmtDeleteNoteFolder->bind_param("i", $note_id);
+            $resDeleteNoteFolder = $stmtDeleteNoteFolder->execute();
+            $stmtDeleteNoteFolder->close();
         }
-
         $stmtCheckFolder->close();
 
         if (isset($resInsertFolder)) {
@@ -309,9 +307,9 @@
         $stmtFolders->execute();
         $resultFolders = $stmtFolders->get_result();
 
-        $foldersOptions = "<option value=''>Nessuna cartella</option>";
+        $foldersOptions = "";
 
-        if ($resultFolders && $resultFolders->num_rows > 0) {
+        if ($resultFolders && $resultFolders->num_rows > 1) {
             while ($rowFolder = $resultFolders->fetch_assoc()) {
                 $idFolder = $rowFolder['id'];
                 $nameFolder = $rowFolder['name'];
@@ -326,29 +324,45 @@
                     while ($rowFolderNote = $resultFoldersNote->fetch_assoc()) {
                         if ($rowFolderNote["folder_id"] == $idFolder) {
                             $foldersOptions .= "<option value='$idFolder' selected>$nameFolder</option>";
+                        } else {
+                            $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
                         }
                     }
                 } else {
                     $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
                 }
-
-                $stmtFoldersNote->close();
             }
+
+            $stmtFoldersNote->close();
+        }
+
+        if (!str_contains($foldersOptions, 'selected')) {
+            $foldersOptions .= "<option value='' selected>Nessuna cartella</option>";
+        } else {
+            $foldersOptions .= "<option value=''>Nessuna cartella</option>";
         }
 
         $stmtFolders->close();
-
         return $foldersOptions;
     }
 
     ?>
 
     <header>
-
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <a class="navbar-brand" href="#">Notes App</a>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="crea_categoria.php">Crea Categoria</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="crea_cartella.php">Crea Cartella</a>
+                    </li>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="">|</a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -359,6 +373,10 @@
                             getFoldersNavbar($conn);
                             ?>
                         </div>
+                    </li>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="">|</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="noteHome.php"><img src="ico/home.png" alt="Icona" width="30"
@@ -479,7 +497,7 @@
                                             <input type="hidden" name="currentNoteId" value="<?php echo $note['id']; ?>">
                                             <select id="cartella" name="cartella" class="form-control"
                                                 onchange="this.form.submit()" style="height: 50px;">
-                                                <?php getFolders($conn, $idUtente, $note['id']); ?>
+                                                <?php echo getFolders($conn, $idUtente, $note['id']); ?>
                                             </select>
                                         </li>
                                         <div class="btn-group" role="group" aria-label="Basic outlined example">
