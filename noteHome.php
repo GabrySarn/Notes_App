@@ -82,22 +82,23 @@
             $categorieOptions = "<option value=''>Nessuna categoria disponibile</option>";
         }
 
-        $queryFolders = "SELECT id, name FROM folders WHERE user_id = ?";
-        $stmtFolders = $conn->prepare($queryFolders);
-        $stmtFolders->bind_param("i", $idUtente);
-        $stmtFolders->execute();
-        $resultFolders = $stmtFolders->get_result();
+        /* $queryFolders = "SELECT id, name FROM folders WHERE user_id = ?";
+         $stmtFolders = $conn->prepare($queryFolders);
+         $stmtFolders->bind_param("i", $idUtente);
+         $stmtFolders->execute();
+         $resultFolders = $stmtFolders->get_result();
 
-        $foldersOptions = "<option value=''>Nessuna cartella</option>";
-        if ($resultFolders && $resultFolders->num_rows > 0) {
-            while ($rowFolder = $resultFolders->fetch_assoc()) {
-                $idFolder = $rowFolder['id'];
-                $nameFolder = $rowFolder['name'];
-                $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
-            }
-        }
+         $foldersOptions = "<option value=''>Nessuna cartella</option>";
+         if ($resultFolders && $resultFolders->num_rows > 0) {
+             while ($rowFolder = $resultFolders->fetch_assoc()) {
+                 $idFolder = $rowFolder['id'];
+                 $nameFolder = $rowFolder['name'];
+                 $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
+             }
+         }
 
-        $stmtFolders->close();
+         $stmtFolders->close();*/
+
 
         $queryNote = "SELECT n.id, n.title, n.content, c.name FROM notes n
         join note_category nc on nc.note_id = n.id
@@ -150,6 +151,7 @@
             } elseif (isset($_POST['cartella'])) {
                 $note_id = $_POST['currentNoteId'];
                 $selectedFolder = $_POST['cartella'];
+                $_SESSION["idCartella"] = $selectedFolder;
                 updateNoteFolder($conn, $note_id, $selectedFolder);
             }
         }
@@ -249,7 +251,7 @@
         return $resDeleteNote && $resDeleteNoteCategory;
     }
 
-    function getFoldersNavbar($conn, $selectedFolder)
+    function getFoldersNavbar($conn)
     {
         $query = "SELECT id, name FROM folders";
         $result = $conn->query($query);
@@ -259,8 +261,7 @@
             while ($row = $result->fetch_assoc()) {
                 $idFolder = $row['id'];
                 $nameFolder = $row['name'];
-                $selected = ($idFolder == $selectedFolder) ? 'selected' : '';
-                echo "<a class='dropdown-item' href='noteHome.php?folder_id={$row['id']}' data-folder-id='$idFolder' $selected>$nameFolder</a>";
+                echo "<a class='dropdown-item' href='noteFolder.php?folder_id={$row['id']}' data-folder-id='$idFolder'>$nameFolder</a>";
             }
             echo '</div>';
         }
@@ -300,6 +301,46 @@
         return false;
     }
 
+    function getFolders($conn, $idUtente, $note_id)
+    {
+        $queryFolders = "SELECT id, name FROM folders WHERE user_id = ?";
+        $stmtFolders = $conn->prepare($queryFolders);
+        $stmtFolders->bind_param("i", $idUtente);
+        $stmtFolders->execute();
+        $resultFolders = $stmtFolders->get_result();
+
+        $foldersOptions = "<option value=''>Nessuna cartella</option>";
+
+        if ($resultFolders && $resultFolders->num_rows > 0) {
+            while ($rowFolder = $resultFolders->fetch_assoc()) {
+                $idFolder = $rowFolder['id'];
+                $nameFolder = $rowFolder['name'];
+
+                $queryFoldersNote = "SELECT folder_id FROM note_folder WHERE note_id = ?";
+                $stmtFoldersNote = $conn->prepare($queryFoldersNote);
+                $stmtFoldersNote->bind_param("i", $note_id);
+                $stmtFoldersNote->execute();
+                $resultFoldersNote = $stmtFoldersNote->get_result();
+
+                if ($resultFoldersNote && $resultFoldersNote->num_rows > 0) {
+                    while ($rowFolderNote = $resultFoldersNote->fetch_assoc()) {
+                        if ($rowFolderNote["folder_id"] == $idFolder) {
+                            $foldersOptions .= "<option value='$idFolder' selected>$nameFolder</option>";
+                        }
+                    }
+                } else {
+                    $foldersOptions .= "<option value='$idFolder'>$nameFolder</option>";
+                }
+
+                $stmtFoldersNote->close();
+            }
+        }
+
+        $stmtFolders->close();
+
+        return $foldersOptions;
+    }
+
     ?>
 
     <header>
@@ -315,7 +356,7 @@
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <?php
-                            getFoldersNavbar($conn,$selectedFolder);
+                            getFoldersNavbar($conn);
                             ?>
                         </div>
                     </li>
@@ -438,7 +479,7 @@
                                             <input type="hidden" name="currentNoteId" value="<?php echo $note['id']; ?>">
                                             <select id="cartella" name="cartella" class="form-control"
                                                 onchange="this.form.submit()" style="height: 50px;">
-                                                <?php echo $foldersOptions; ?>
+                                                <?php getFolders($conn, $idUtente, $note['id']); ?>
                                             </select>
                                         </li>
                                         <div class="btn-group" role="group" aria-label="Basic outlined example">
