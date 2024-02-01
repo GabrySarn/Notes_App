@@ -25,7 +25,9 @@ if (isset($_POST['email']) && isset($_POST['password'])) {
         $stmt->close();
         include "noteHome.php";
     } else {
-        echo '<script>alert("Utente non trovato!");</script>';
+        echo '<script>alert("Utente non trovato!");
+        window.location.href = "Login.html";
+        </script>';
     }
 } else {
     include "noteHome.php";

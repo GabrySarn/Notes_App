@@ -232,9 +232,9 @@
         return $resDeleteNote && $resDeleteNoteCategory;
     }
 
-    function getFoldersNavbar($conn)
+    function getFoldersNavbar($conn,$idUtente)
     {
-        $query = "SELECT id, name FROM folders";
+        $query = "SELECT id, name FROM folders where user_id = '$idUtente'";
         $result = $conn->query($query);
         $i = 0;
         if ($result && $result->num_rows > 1) {
@@ -309,7 +309,7 @@
 
         $foldersOptions = "";
 
-        if ($resultFolders && $resultFolders->num_rows > 1) {
+        if ($resultFolders && $resultFolders->num_rows > 0) {
             while ($rowFolder = $resultFolders->fetch_assoc()) {
                 $idFolder = $rowFolder['id'];
                 $nameFolder = $rowFolder['name'];
@@ -370,7 +370,7 @@
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <?php
-                            getFoldersNavbar($conn);
+                            getFoldersNavbar($conn,$idUtente);
                             ?>
                         </div>
                     </li>
