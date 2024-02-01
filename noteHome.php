@@ -82,9 +82,10 @@
             $categorieOptions = "<option value=''>Nessuna categoria disponibile</option>";
         }
 
-        $queryNote = "SELECT n.id, n.title, n.content, c.name FROM notes n
-        join note_category nc on nc.note_id = n.id
-        join categories c on c.id = nc.category_id
+        $queryNote = "SELECT n.id, n.title, n.content, COALESCE(c.name, 'Nessuna categoria') AS name 
+        FROM notes n
+        LEFT JOIN note_category nc ON nc.note_id = n.id
+        LEFT JOIN categories c ON c.id = nc.category_id
         WHERE user_id = ?";
         $stmtNote = $conn->prepare($queryNote);
         $stmtNote->bind_param("i", $idUtente);
@@ -94,6 +95,8 @@
         $noteList = array();
 
         while ($rowNote = $resultNote->fetch_assoc()) {
+            if ($rowNote['name'] == 'Nessuna categoria') {
+            }
             $noteList[] = array(
                 'title' => $rowNote['title'],
                 'text' => $rowNote['content'],
@@ -186,7 +189,8 @@
     {
         global $noteMod;
 
-        $queryGetNote = "SELECT n.title, n.content, c.id, c.name FROM notes n
+        $queryGetNote = "SELECT n.title, n.content, c.id, COALESCE(c.name, 'Nessuna categoria') AS name
+            FROM notes n
             join note_category nc on nc.note_id = n.id
             join categories c on c.id = nc.category_id
             WHERE n.user_id = ? and n.id = ?";
@@ -204,6 +208,24 @@
                 'category_id' => $rowNote['id'],
                 'category_name' => $rowNote['name']
             );
+        } else {
+            $queryGetNote = "SELECT n.title, n.content
+            FROM notes n , categories c
+            WHERE n.user_id = ? and n.id = ? ";
+            $stmtGetNote = $conn->prepare($queryGetNote);
+            $stmtGetNote->bind_param("ii", $idUtente, $note_id);
+            $stmtGetNote->execute();
+            $resultGetNote = $stmtGetNote->get_result();
+            if ($resultGetNote && $resultGetNote->num_rows > 0) {
+                $rowNote = $resultGetNote->fetch_assoc();
+                $noteMod = array(
+                    'id' => $note_id,
+                    'title' => $rowNote['title'],
+                    'text' => $rowNote['content'],
+                    'category_id' => '0',
+                    'category_name' => 'Nessuna categoria'
+                );
+            }
         }
         $stmtGetNote->close();
 
@@ -232,7 +254,7 @@
         return $resDeleteNote && $resDeleteNoteCategory;
     }
 
-    function getFoldersNavbar($conn,$idUtente)
+    function getFoldersNavbar($conn, $idUtente)
     {
         $query = "SELECT id, name FROM folders where user_id = '$idUtente'";
         $result = $conn->query($query);
@@ -370,7 +392,7 @@
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <?php
-                            getFoldersNavbar($conn,$idUtente);
+                            getFoldersNavbar($conn, $idUtente);
                             ?>
                         </div>
                     </li>
@@ -417,12 +439,12 @@
                             $cid = $noteMod['category_id'];
                             $cna = $noteMod['category_name'];
 
+
                             echo "<option value='$cid' $selected>$cna</option>";
                             foreach ($resultCategorie as $rowCategoria) {
                                 $idCategoria = $rowCategoria['id'];
                                 if ($idCategoria != $noteMod['category_id']) {
                                     $nomeCategoria = $rowCategoria['name'];
-                                    $selected = ($idCategoria == $selectedCategoryId) ? 'selected' : '';
                                     echo "<option value='$idCategoria' $selected>$nomeCategoria</option>";
                                 }
                             }
