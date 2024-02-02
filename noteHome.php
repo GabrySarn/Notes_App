@@ -259,18 +259,15 @@
         $query = "SELECT id, name FROM folders where user_id = '$idUtente'";
         $result = $conn->query($query);
         $i = 0;
-        if ($result && $result->num_rows > 1) {
+        if ($result && $result->num_rows > 0) {
 
             echo '<div>';
 
             while ($row = $result->fetch_assoc()) {
-                if ($i > 0) {
                     $idFolder = $row['id'];
                     $nameFolder = $row['name'];
                     echo "<a class='dropdown-item' href='noteFolder.php?folder_id={$row['id']}' data-folder-id='$idFolder'>$nameFolder</a>";
-                } else {
-                    $i = 1;
-                }
+                
             }
             echo '</div>';
         }
